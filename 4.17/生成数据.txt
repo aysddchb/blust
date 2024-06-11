@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+# 生成模拟的航班数据集
+def generate_flight_data(num_flights):
+    # 创建随机种子，确保结果可复现
+    np.random.seed(0)
+
+    # 生成航班数据
+    flights_data = pd.DataFrame()
+    flights_data['scheduled_departure_time'] = pd.date_range(start='2022-01-01', periods=num_flights, freq='H')
+    flights_data['scheduled_arrival_time'] = flights_data['scheduled_departure_time'] + pd.to_timedelta(np.random.randint(1, 6, size=num_flights), unit='h')
+    flights_data['departure_airport'] = np.random.choice(['JFK', 'LAX', 'ORD', 'DFW'], size=num_flights)
+    flights_data['arrival_airport'] = np.random.choice(['LHR', 'CDG', 'HND', 'PEK'], size=num_flights)
+    flights_data['weather'] = np.random.choice(['sunny', 'cloudy', 'rainy'], size=num_flights)
+    flights_data['airline'] = np.random.choice(['AA', 'DL', 'UA', 'WN'], size=num_flights)
+
+    # 生成温度、能见度、风速、风向数据
+    flights_data['temperature'] = np.random.randint(-10, 30, size=num_flights)  # 温度范围：-10°C 到 30°C
+    flights_data['visibility'] = np.random.randint(200, 2000, size=num_flights)  # 能见度范围：200m 到 2000m
+    flights_data['wind_speed'] = np.random.uniform(0, 25, size=num_flights)  # 风速范围：0米/秒 到 25米/秒
+    flights_data['wind_direction'] = np.random.choice(['headwind', 'tailwind', 'crosswind'], size=num_flights)
+    flights_data['aircraft_model'] = np.random.choice(['B747','B737','B777','B787','B767','B757','A320','A350','A380','A330','A319','A321'], size=num_flights)  # 机型
+
+    # 根据风向调整风速对飞行的影响
+    for idx, row in flights_data.iterrows():
+        if row['wind_direction'] == 'headwind':
+            # 逆风，对飞机影响较大，增加风速
+            flights_data.at[idx, 'wind_speed'] += np.random.uniform(5, 15)
+        elif row['wind_direction'] == 'tailwind':
+            # 顺风，对飞机有帮助，减少风速
+            flights_data.at[idx, 'wind_speed'] -= np.random.uniform(0, 5)
+        else:
+            # 侧风，对飞机影响较大，增加风速
+            flights_data.at[idx, 'wind_speed'] += np.random.uniform(10, 20)
+    # 根据条件生成飞机是否正点的标签
+    def generate_on_time(weather, temperature, visibility, wind_speed, wind_direction, aircraft_model):
+        # 根据实际情况定义飞机起飞的条件
+        if (weather == 'sunny' and visibility >= 600 and wind_speed <= 20) or \
+           (weather == 'cloudy' and visibility >= 400 and wind_speed <= 20) or \
+           (weather == 'rainy' and visibility >= 400 and wind_speed <= 20):
+            return True
+        else:
+            return False
+
+    flights_data['on_time'] = flights_data.apply(lambda row: generate_on_time(row['weather'], row['temperature'], row['visibility'], row['wind_speed'], row['wind_direction'], row['aircraft_model']), axis=1)
+
+    # 生成机型数据
+    
+    # 根据天气和风速等因素判断航班是否正点
+    flights_data['on_time'] = True
+    for idx, row in flights_data.iterrows():
+        if row['weather'] == 'rainy' or row['visibility'] < 600 or row['wind_speed'] > 20:
+            # 下雨、能见度低于600m、风速大于20米/秒，航班可能延误
+            flights_data.at[idx, 'on_time'] = False
+
+    return flights_data
+
+# 生成示例数据集
+flights_data = generate_flight_data(10000)
+
+# 将数据集保存为CSV文件
+flights_data.to_csv(r'D:\python\兼职\4.17\flights.csv', index=False)
